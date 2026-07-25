@@ -19,7 +19,7 @@ Build with `pnpm build`. Run `pnpm lint`, `pnpm typecheck`, and `pnpm test`.
 
 Replace `AUTH_TOKEN` in `.env` with a long random secret. Create the bind directories as your desktop user with `mkdir -p "${UPLOAD_HOST_DIR:-/tmp/passthrough}" data/database "${XDG_DATA_HOME:-$HOME/.local/share}/passthrough/clipboard"`, then run `docker compose up --build -d`. The service listens on HTTP port 8787. Configure `UPLOAD_HOST_DIR`, `MAX_UPLOAD_BYTES`, and other paths from `.env.example`; the destination is intentionally not editable in the PWA.
 
-The PWA has no token screen by design. On each trusted browser, set the token once from its developer console with `localStorage.setItem("passthrough-token", "YOUR_TOKEN")`, then reload.
+On each trusted browser, open the PWA and enter the token when prompted. The PWA verifies it and stores it in that browser for future visits.
 
 Install the host agent with `scripts/install-clipboard-agent.sh`, ensuring its clipboard directory matches the Compose mount. Build the Shortcut using [docs/ipad-shortcut.md](docs/ipad-shortcut.md). Architecture is in [docs/architecture.md](docs/architecture.md).
 
