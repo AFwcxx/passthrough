@@ -1,0 +1,1 @@
+{"name":"@passthrough/shared","type":"module","exports":{".":{"types":"./src/index.ts","default":"./dist/index.js"}},"scripts":{"typecheck":"tsc --noEmit","build":"tsc","test":"vitest run --passWithNoTests"},"dependencies":{"zod":"^3.25.76"},"devDependencies":{"vitest":"^3.2.4"}}

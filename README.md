@@ -1,0 +1,28 @@
+# Passthrough
+
+Self-hosted iPad Share Sheet receiver for a Fedora workstation over Tailscale. Express serves the Vue PWA and API; SQLite stores settings/history; files and clipboard jobs use bind mounts; a user service performs Wayland clipboard writes.
+
+## Prerequisites and development
+
+Node 22, pnpm, and (for clipboard use) Fedora GNOME Wayland with `wl-copy`.
+
+```sh
+cp .env.example .env
+pnpm install
+set -a; . ./.env; set +a
+pnpm dev
+```
+
+Build with `pnpm build`. Run `pnpm lint`, `pnpm typecheck`, and `pnpm test`.
+
+## Docker Compose
+
+Replace `AUTH_TOKEN` in `.env` with a long random secret. Create the bind directories as your desktop user with `mkdir -p "${UPLOAD_HOST_DIR:-/tmp/passthrough}" data/database "${XDG_DATA_HOME:-$HOME/.local/share}/passthrough/clipboard"`, then run `docker compose up --build -d`. The service listens on HTTP port 8787. Configure `UPLOAD_HOST_DIR`, `MAX_UPLOAD_BYTES`, and other paths from `.env.example`; the destination is intentionally not editable in the PWA.
+
+The PWA has no token screen by design. On each trusted browser, set the token once from its developer console with `localStorage.setItem("passthrough-token", "YOUR_TOKEN")`, then reload.
+
+Install the host agent with `scripts/install-clipboard-agent.sh`, ensuring its clipboard directory matches the Compose mount. Build the Shortcut using [docs/ipad-shortcut.md](docs/ipad-shortcut.md). Architecture is in [docs/architecture.md](docs/architecture.md).
+
+## Security and troubleshooting
+
+This is for a trusted Tailscale network: traffic is HTTP, bearer tokens are visible to endpoints/network peers, and there are no users or public-internet protections. Keep bind-mounted directories private. Health is public at `/api/health`; every other API route requires the bearer header. If uploads fail, check directory ownership and `docker compose logs`; if clipboard jobs stall, check `journalctl --user -u passthrough-clipboard.service`, Wayland session variables, and the shared mount.

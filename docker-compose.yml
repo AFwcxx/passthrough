@@ -1,0 +1,21 @@
+services:
+  passthrough:
+    build: .
+    ports: ["${PORT:-8787}:8787"]
+    environment:
+      PORT: 8787
+      UPLOAD_CONTAINER_DIR: /data/uploads
+      DATABASE_PATH: /data/database/passthrough.sqlite
+      CLIPBOARD_DIR: /data/clipboard
+      AUTH_TOKEN: ${AUTH_TOKEN:-replace-with-a-long-random-token}
+      MAX_UPLOAD_BYTES: ${MAX_UPLOAD_BYTES:-52428800}
+    volumes:
+      - ${UPLOAD_HOST_DIR:-/tmp/passthrough}:/data/uploads
+      - ./data/database:/data/database
+      - ${XDG_DATA_HOME:-${HOME}/.local/share}/passthrough/clipboard:/data/clipboard
+    healthcheck:
+      test: ["CMD","wget","-qO-","http://127.0.0.1:8787/api/health"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+    restart: unless-stopped
