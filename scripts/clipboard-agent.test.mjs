@@ -1,9 +1,12 @@
 import { EventEmitter } from "node:events";
+import { mkdtemp, readFile, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { copy } from "./clipboard-agent.mjs";
+import { copy, tick } from "./clipboard-agent.mjs";
 
-test("passes clipboard data through stdin without shell interpolation", async () => {
+test("completes when wl-copy daemonizes without closing inherited stderr", async () => {
   let call;
   const spawn = (command, args, options) => {
     call = { command, args, options, input: undefined };
@@ -12,7 +15,7 @@ test("passes clipboard data through stdin without shell interpolation", async ()
     child.stdin = {
       end(input) {
         call.input = input;
-        Promise.resolve().then(() => child.emit("close", 0));
+        Promise.resolve().then(() => child.emit("exit", 0));
       },
     };
     return child;
@@ -27,4 +30,51 @@ test("passes clipboard data through stdin without shell interpolation", async ()
     options: { stdio: ["pipe", "ignore", "pipe"] },
     input: "$(touch /tmp/nope)",
   });
+});
+
+test("resolves image payloads inside the shared directory and cleans them", async () => {
+  const dir = await mkdtemp(join(tmpdir(), "passthrough-agent-"));
+  const id = "image-job",
+    payload = `${id}.payload`;
+  await writeFile(join(dir, payload), "image");
+  await writeFile(
+    join(dir, `${id}.json`),
+    JSON.stringify({
+      id,
+      type: "image",
+      mimeType: "image/png",
+      value: payload,
+    }),
+  );
+
+  await tick(dir, async (job) => {
+    assert.equal(job.value, join(dir, payload));
+  });
+
+  await assert.rejects(readFile(join(dir, payload)));
+  assert.equal(
+    JSON.parse(await readFile(join(dir, `${id}.result.json`), "utf8")).success,
+    true,
+  );
+});
+
+test("rejects image payload paths outside the shared directory", async () => {
+  const dir = await mkdtemp(join(tmpdir(), "passthrough-agent-"));
+  const id = "unsafe-job";
+  await writeFile(
+    join(dir, `${id}.json`),
+    JSON.stringify({
+      id,
+      type: "image",
+      mimeType: "image/png",
+      value: "../image.png",
+    }),
+  );
+
+  await tick(dir, async () => assert.fail("unsafe job was copied"));
+
+  assert.equal(
+    JSON.parse(await readFile(join(dir, `${id}.result.json`), "utf8")).success,
+    false,
+  );
 });

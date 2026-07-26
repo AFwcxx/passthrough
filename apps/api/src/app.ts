@@ -2,6 +2,7 @@ import express from "express";
 import multer from "multer";
 import { createHash, timingSafeEqual, randomUUID } from "node:crypto";
 import {
+  copyFileSync,
   mkdirSync,
   readdirSync,
   readFileSync,
@@ -136,7 +137,8 @@ export function createApp(c: Config) {
         const action = parsed.data!,
           transferId = randomUUID(),
           items: ShareResponse["processedItems"] = [],
-          savedPaths: string[] = [];
+          savedPaths: string[] = [],
+          uploadedPaths: string[] = [];
         let compatible:
           | { type: "text" | "image"; value: string; mimeType: string }
           | undefined;
@@ -144,6 +146,7 @@ export function createApp(c: Config) {
           const filename = `${randomUUID()}-${safe(f.originalname)}${extname(f.originalname) && safe(f.originalname).endsWith(extname(f.originalname)) ? "" : extname(f.originalname)}`;
           const target = join(c.UPLOAD_CONTAINER_DIR, filename);
           renameSync(f.path, target);
+          uploadedPaths.push(target);
           const saved = action !== "clipboard";
           if (saved) savedPaths.push(relative(c.UPLOAD_CONTAINER_DIR, target));
           if (f.mimetype.startsWith("image/"))
@@ -174,11 +177,20 @@ export function createApp(c: Config) {
         const wants = action !== "save";
         const clipboardStatus =
           wants && compatible ? "queued" : wants ? "skipped" : "not_requested";
-        if (clipboardStatus === "queued")
+        if (clipboardStatus === "queued") {
+          const job = { id: transferId, ...compatible! };
+          if (job.type === "image") {
+            const payload = `${transferId}.payload`;
+            copyFileSync(job.value, join(c.CLIPBOARD_DIR, payload));
+            job.value = payload;
+          }
           writeFileSync(
             join(c.CLIPBOARD_DIR, `${transferId}.json`),
-            JSON.stringify({ id: transferId, ...compatible }),
+            JSON.stringify(job),
           );
+        }
+        if (action === "clipboard")
+          for (const path of uploadedPaths) unlinkSync(path);
         const stmt = db.prepare(
           "INSERT INTO history(transfer_id,timestamp,label,saved_filename,mime_type,byte_size,action,save_result,clipboard_result,error_message) VALUES(?,?,?,?,?,?,?,?,?,?)",
         );

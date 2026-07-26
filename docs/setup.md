@@ -64,6 +64,9 @@ Run the installer from your active GNOME Wayland desktop session:
 scripts/install-clipboard-agent.sh
 ```
 
+The installer can also be rerun after an update; it replaces and restarts the
+agent so the running service uses the current repository version.
+
 Verify the user service and check the API again:
 
 ```sh
@@ -77,8 +80,33 @@ The actions behave as follows:
 
 - `save` stores shared files on Fedora.
 - `clipboard` copies the final compatible image, text, or URL to the Fedora
-  clipboard without retaining uploaded files.
+  clipboard without retaining uploaded files or staged image payloads.
 - `both` saves files and copies the final compatible item.
+
+To paste that Fedora clipboard into Codex through SSH or tmux, launch Codex
+from this repository with:
+
+```sh
+scripts/codex-with-clipboard.sh
+```
+
+Pass Codex options normally, for example
+`scripts/codex-with-clipboard.sh --no-alt-screen`. The wrapper configures the
+active Fedora Wayland socket and GNOME's XWayland fallback, then fails clearly
+if either is unavailable.
+
+If multiple accounts use `CODEX_HOME`, alias the base command to the wrapper
+before defining the account aliases:
+
+```sh
+alias codex="$HOME/Developments/pwa/passthrough/scripts/codex-with-clipboard.sh"
+alias codex-tech='CODEX_HOME=$HOME/.codex-tech codex'
+alias codex-ops='CODEX_HOME=$HOME/.codex-ops codex'
+alias codex-su='CODEX_HOME=$HOME/.codex-su codex'
+```
+
+The wrapper preserves `CODEX_HOME`, so each alias continues using its own
+authentication, configuration, and session data.
 
 ## 3. Find the Fedora address
 
@@ -166,3 +194,7 @@ journalctl --user -u passthrough-clipboard.service
 - Clipboard jobs that remain queued usually mean the agent is not running
   inside the active Wayland session, or the Compose and agent clipboard
   directories do not match.
+- `Wayland socket not found` from the Codex wrapper means the Fedora desktop
+  session is not active or uses a different socket. Check
+  `ls "$XDG_RUNTIME_DIR"/wayland-*` and set `WAYLAND_DISPLAY` to the socket
+  name before rerunning the wrapper.

@@ -26,6 +26,11 @@ On each trusted browser, open the PWA and enter the token when prompted. The PWA
 
 Install the host agent with `scripts/install-clipboard-agent.sh`, ensuring its clipboard directory matches the Compose mount. Focused references are available for the [clipboard agent](docs/clipboard-agent.md), [Apple Shortcut](docs/ipad-shortcut.md), and [architecture](docs/architecture.md).
 
+When running Codex through SSH or tmux, use
+`scripts/codex-with-clipboard.sh` so Codex can read the active Fedora Wayland
+clipboard. The wrapper accepts the same arguments and preserves `CODEX_HOME`,
+so account-specific Codex aliases can call it without sharing account state.
+
 ## Security and troubleshooting
 
 This is for a trusted Tailscale network: traffic is HTTP, bearer tokens are visible to endpoints/network peers, and there are no users or public-internet protections. Keep bind-mounted directories private. Health is public at `/api/health`; every other API route requires the bearer header. If uploads fail, check directory ownership and `docker compose logs`; if clipboard jobs stall, check `journalctl --user -u passthrough-clipboard.service`, Wayland session variables, and the shared mount.

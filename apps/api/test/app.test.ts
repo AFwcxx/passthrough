@@ -1,6 +1,12 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import request from "supertest";
-import { mkdtempSync, readFileSync, writeFileSync } from "node:fs";
+import {
+  existsSync,
+  mkdtempSync,
+  readFileSync,
+  readdirSync,
+  writeFileSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { createApp } from "../src/app.js";
@@ -44,11 +50,13 @@ describe("API", () => {
     expect(r.body.savedPaths.every((p: string) => !p.includes(".."))).toBe(
       true,
     );
-    const jobs = readFileSync(
-      join(root, "clip", `${r.body.transferId}.json`),
-      "utf8",
+    const job = JSON.parse(
+      readFileSync(join(root, "clip", `${r.body.transferId}.json`), "utf8"),
     );
-    expect(JSON.parse(jobs).type).toBe("image");
+    expect(job.type).toBe("image");
+    expect(job.value).toBe(`${r.body.transferId}.payload`);
+    expect(existsSync(join(root, "clip", job.value))).toBe(true);
+    expect(readdirSync(join(root, "up"))).toHaveLength(2);
     writeFileSync(
       join(root, "clip", `${r.body.transferId}.result.json`),
       JSON.stringify({ success: true }),
@@ -58,6 +66,21 @@ describe("API", () => {
       .set("Authorization", `Bearer ${token}`);
     expect(history.body.total).toBe(2);
     expect(history.body.items[0].clipboard_result).toBe("copied");
+  });
+  it("stages clipboard images without retaining uploads", async () => {
+    const r = await request(ctx.app)
+      .post("/api/share")
+      .set("Authorization", `Bearer ${token}`)
+      .field("action", "clipboard")
+      .attach("files", Buffer.from("image"), "shot.png");
+    const job = JSON.parse(
+      readFileSync(join(root, "clip", `${r.body.transferId}.json`), "utf8"),
+    );
+
+    expect(r.status).toBe(201);
+    expect(r.body.savedPaths).toEqual([]);
+    expect(readdirSync(join(root, "up"))).toEqual([]);
+    expect(readFileSync(join(root, "clip", job.value), "utf8")).toBe("image");
   });
   it("enforces aggregate request size", async () =>
     expect(

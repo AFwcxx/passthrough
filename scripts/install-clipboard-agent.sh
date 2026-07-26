@@ -16,7 +16,8 @@ Restart=on-failure
 WantedBy=default.target
 UNIT
 systemctl --user daemon-reload
-systemctl --user enable --now passthrough-clipboard.service
+systemctl --user enable passthrough-clipboard.service
+systemctl --user restart passthrough-clipboard.service
 echo "Verify: systemctl --user status passthrough-clipboard.service"
 echo "Logs: journalctl --user -u passthrough-clipboard.service"
 echo "Remove: systemctl --user disable --now passthrough-clipboard.service; rm '$unit/passthrough-clipboard.service' '$data/clipboard-agent.mjs'"

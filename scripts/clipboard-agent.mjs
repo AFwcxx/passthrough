@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 import { readdir, readFile, rename, unlink, writeFile } from "node:fs/promises";
 import { spawn } from "node:child_process";
-import { join } from "node:path";
+import { basename, join } from "node:path";
 import { pathToFileURL } from "node:url";
 
 const defaultDir =
@@ -28,30 +28,33 @@ export function copy(job, spawnProcess = spawn, loadFile = readFile) {
       error += data;
     });
     child.on("error", reject);
-    child.on("close", (code) =>
+    child.on("exit", (code) =>
       code ? reject(new Error(error || `wl-copy exited ${code}`)) : resolve(),
     );
     child.stdin.end(input);
   });
 }
 
-export async function tick(dir = defaultDir) {
+export async function tick(dir = defaultDir, copyJob = copy) {
   await writeFile(join(dir, ".heartbeat"), new Date().toISOString());
   for (const name of await readdir(dir)) {
     if (!name.endsWith(".json") || name.endsWith(".result.json")) continue;
     const path = join(dir, name),
       work = `${path}.working`,
       id = name.slice(0, -5);
+    let payload;
     try {
       await rename(path, work);
       const job = JSON.parse(await readFile(work, "utf8"));
       if (
-        !job.id ||
+        job.id !== id ||
         !["text", "image"].includes(job.type) ||
-        typeof job.value !== "string"
+        typeof job.value !== "string" ||
+        (job.type === "image" && basename(job.value) !== job.value)
       )
         throw new Error("Invalid job");
-      await copy(job);
+      if (job.type === "image") payload = join(dir, job.value);
+      await copyJob({ ...job, value: payload ?? job.value });
       await writeFile(
         join(dir, `${job.id}.result.json`),
         JSON.stringify({
@@ -69,6 +72,7 @@ export async function tick(dir = defaultDir) {
       );
     } finally {
       await unlink(work).catch(() => {});
+      if (payload) await unlink(payload).catch(() => {});
     }
   }
 }
