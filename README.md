@@ -2,6 +2,9 @@
 
 Self-hosted iPad Share Sheet receiver for a Fedora workstation over Tailscale. Express serves the Vue PWA and API; SQLite stores settings/history; files and clipboard jobs use bind mounts; a user service performs Wayland clipboard writes.
 
+For complete Fedora and iPhone/iPad instructions, start with the
+[end-to-end setup guide](docs/setup.md).
+
 ## Prerequisites and development
 
 Node 22, pnpm, and (for clipboard use) Fedora GNOME Wayland with `wl-copy`.
@@ -21,7 +24,7 @@ Replace `AUTH_TOKEN` in `.env` with a long random secret. Create the bind direct
 
 On each trusted browser, open the PWA and enter the token when prompted. The PWA verifies it and stores it in that browser for future visits.
 
-Install the host agent with `scripts/install-clipboard-agent.sh`, ensuring its clipboard directory matches the Compose mount. Build the Shortcut using [docs/ipad-shortcut.md](docs/ipad-shortcut.md). Architecture is in [docs/architecture.md](docs/architecture.md).
+Install the host agent with `scripts/install-clipboard-agent.sh`, ensuring its clipboard directory matches the Compose mount. Focused references are available for the [clipboard agent](docs/clipboard-agent.md), [Apple Shortcut](docs/ipad-shortcut.md), and [architecture](docs/architecture.md).
 
 ## Security and troubleshooting
 
