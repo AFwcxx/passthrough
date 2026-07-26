@@ -10,7 +10,7 @@ Build responsive Dashboard, History, and Settings views with PrimeVue, manifest,
 
 ## Acceptance criteria
 
-App builds, shell installs/caches, requested fields render, and no token or file-management UI appears.
+App builds, shell installs/caches, requested fields render, and operational views contain no token-management or file-management UI.
 
 ## Verification
 
@@ -18,4 +18,4 @@ App builds, shell installs/caches, requested fields render, and no token or file
 
 ## Exclusions
 
-Authentication screens, uploads, share targets, previews, downloads, notifications, charts, and themes.
+User accounts, login/session flows, token display or management, uploads, share targets, previews, downloads, notifications, charts, and themes.
