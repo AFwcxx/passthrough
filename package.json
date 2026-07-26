@@ -1,1 +1,29 @@
-{"name":"passthrough","private":true,"type":"module","packageManager":"pnpm@10.13.1","scripts":{"dev":"pnpm --filter @passthrough/api dev","lint":"eslint .","typecheck":"pnpm -r typecheck","test":"node --test scripts/clipboard-agent.test.mjs && pnpm -r test","build":"pnpm -r build"},"devDependencies":{"@eslint/js":"^9.31.0","eslint":"^9.31.0","typescript":"^5.8.3","typescript-eslint":"^8.38.0"}}
+{
+  "name": "passthrough",
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@10.13.1",
+  "scripts": {
+    "dev": "pnpm --filter @passthrough/api dev",
+    "lint": "eslint .",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "typecheck": "pnpm -r typecheck",
+    "test": "node --test scripts/clipboard-agent.test.mjs && pnpm -r test",
+    "build": "pnpm -r build",
+    "prepare": "husky"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.31.0",
+    "eslint": "^9.31.0",
+    "husky": "^9.1.7",
+    "lint-staged": "^16.4.0",
+    "prettier": "3.9.6",
+    "typescript": "^5.8.3",
+    "typescript-eslint": "^8.38.0"
+  },
+  "prettier": {},
+  "lint-staged": {
+    "**/*": "prettier --write --ignore-unknown"
+  }
+}

@@ -9,9 +9,22 @@ test("passes clipboard data through stdin without shell interpolation", async ()
     call = { command, args, options, input: undefined };
     const child = new EventEmitter();
     child.stderr = new EventEmitter();
-    child.stdin = { end(input) { call.input = input; Promise.resolve().then(() => child.emit("close", 0)); } };
+    child.stdin = {
+      end(input) {
+        call.input = input;
+        Promise.resolve().then(() => child.emit("close", 0));
+      },
+    };
     return child;
   };
-  await copy({ type: "text", mimeType: "text/plain", value: "$(touch /tmp/nope)" }, spawn);
-  assert.deepEqual(call, { command: "wl-copy", args: ["--type", "text/plain"], options: { stdio: ["pipe", "ignore", "pipe"] }, input: "$(touch /tmp/nope)" });
+  await copy(
+    { type: "text", mimeType: "text/plain", value: "$(touch /tmp/nope)" },
+    spawn,
+  );
+  assert.deepEqual(call, {
+    command: "wl-copy",
+    args: ["--type", "text/plain"],
+    options: { stdio: ["pipe", "ignore", "pipe"] },
+    input: "$(touch /tmp/nope)",
+  });
 });
