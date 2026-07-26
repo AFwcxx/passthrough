@@ -101,28 +101,31 @@ and opens the read-only dashboard.
 ## 4. Create the iPhone/iPad Shortcut
 
 1. In Shortcuts, create a shortcut named **Send to Passthrough**.
-2. Open its details, enable **Show in Share Sheet**, and allow Images, Files,
-   URLs, and Text as input.
-3. Add **Choose from Menu** with **Save**, **Clipboard**, and **Both**. Set a
+2. Tap **•••** to open the shortcut. Open the shortcut-name menu, tap
+   **Details** (**ⓘ** on older iOS versions), and enable **Show in Share
+   Sheet**.
+3. In the new **Receive Any Input from Share Sheet** action, tap **Any** and
+   select **Images**, **Files**, **URLs**, and **Text**.
+4. Add **Choose from Menu** with **Save**, **Clipboard**, and **Both**. Set a
    Text value in each branch to `save`, `clipboard`, or `both`, respectively,
    and store the result in an `action` variable.
-4. Add **Get Contents of URL** after the menu. Use
+5. Add **Get Contents of URL** after the menu. Use
    `http://FEDORA_TAILSCALE_IP:8787/api/share`, method **POST**, and request
    body **Form**.
-5. Add an `action` form field using the `action` variable.
-6. For images or files, add a `files` form field using **Shortcut Input**.
+6. Add an `action` form field using the `action` variable.
+7. For images or files, add a `files` form field using **Shortcut Input**.
    Allow multiple items.
-7. For shared text, use a `text` form field. For a shared URL, use a `url`
+8. For shared text, use a `text` form field. For a shared URL, use a `url`
    form field. Use the corresponding Shortcut Input value.
-8. Add an `Authorization` header with this value, replacing the placeholder
+9. Add an `Authorization` header with this value, replacing the placeholder
    with the token from `.env`:
 
    ```text
    Bearer YOUR_LONG_TOKEN
    ```
 
-9. Add **Show Result** after the request so the response displays `success`,
-   `transferId`, and `clipboardStatus`.
+10. Add **Show Result** after the request so the response displays `success`,
+    `transferId`, and `clipboardStatus`.
 
 ## 5. Test end to end
 
