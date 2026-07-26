@@ -23,13 +23,10 @@ Keep it available for the Apple Shortcut and the web dashboard.
 The defaults save received files in `/tmp/passthrough`. To use a permanent
 location, change `UPLOAD_HOST_DIR` in `.env` before continuing.
 
-Create the host directories. Replace `/tmp/passthrough` if you changed
-`UPLOAD_HOST_DIR`:
+Prepare the host directories:
 
 ```sh
-mkdir -p /tmp/passthrough \
-  data/database \
-  "${XDG_DATA_HOME:-$HOME/.local/share}/passthrough/clipboard"
+scripts/prepare-docker-dirs.sh
 ```
 
 Build and start Passthrough:
@@ -159,8 +156,10 @@ journalctl --user -u passthrough-clipboard.service
   `.env`.
 - A connection failure usually means the Apple device cannot reach the Fedora
   Tailscale address or port 8787.
-- Upload failures commonly mean `UPLOAD_HOST_DIR` does not exist or is not
-  writable by the user running Docker.
+- `unable to open database file` or upload failures commonly mean
+  `scripts/prepare-docker-dirs.sh` was skipped or could not prepare writable
+  directories. Run it again and resolve any reported ownership error before
+  restarting Compose.
 - Clipboard jobs that remain queued usually mean the agent is not running
   inside the active Wayland session, or the Compose and agent clipboard
   directories do not match.
