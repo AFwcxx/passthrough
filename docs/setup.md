@@ -51,11 +51,11 @@ complete.
 Skip this section if the Shortcut will only use the `save` action.
 
 Clipboard support requires Fedora GNOME Wayland, Node 22 at `/usr/bin/node`,
-and `wl-copy`. Check Node and install `wl-copy` if needed:
+`wl-copy`, and ImageMagick. Check Node and install the packages if needed:
 
 ```sh
 /usr/bin/node --version
-sudo dnf install wl-clipboard
+sudo dnf install wl-clipboard ImageMagick
 ```
 
 Run the installer from your active GNOME Wayland desktop session:

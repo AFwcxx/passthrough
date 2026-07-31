@@ -1,6 +1,6 @@
 # Clipboard agent
 
-Run `scripts/install-clipboard-agent.sh` from a Fedora GNOME Wayland session. It verifies `wl-copy`, creates user-owned directories, installs the polling Node agent and systemd user unit, reloads systemd, then enables and starts it. No root is needed unless installing `wl-clipboard`.
+Run `scripts/install-clipboard-agent.sh` from a Fedora GNOME Wayland session. It verifies `wl-copy` and ImageMagick, creates user-owned directories, installs the polling Node agent and systemd user unit, reloads systemd, then enables and starts it. No root is needed unless installing `wl-clipboard` or ImageMagick.
 
 Rerun the installer after updating Passthrough. It replaces the installed
 agent and restarts the service so the running process loads the new version.

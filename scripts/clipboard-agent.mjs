@@ -1,8 +1,11 @@
 #!/usr/bin/env node
 import { readdir, readFile, rename, unlink, writeFile } from "node:fs/promises";
-import { spawn } from "node:child_process";
+import { execFile, spawn } from "node:child_process";
 import { basename, join } from "node:path";
 import { pathToFileURL } from "node:url";
+import { promisify } from "node:util";
+
+const convertImage = promisify(execFile);
 
 const defaultDir =
   process.env.PASSTHROUGH_CLIPBOARD_DIR ??
@@ -35,14 +38,19 @@ export function copy(job, spawnProcess = spawn, loadFile = readFile) {
   });
 }
 
-export async function tick(dir = defaultDir, copyJob = copy) {
+export async function tick(
+  dir = defaultDir,
+  copyJob = copy,
+  convert = (source, target) =>
+    convertImage("magick", [`${source}[0]`, target]),
+) {
   await writeFile(join(dir, ".heartbeat"), new Date().toISOString());
   for (const name of await readdir(dir)) {
     if (!name.endsWith(".json") || name.endsWith(".result.json")) continue;
     const path = join(dir, name),
       work = `${path}.working`,
       id = name.slice(0, -5);
-    let payload;
+    let payload, converted;
     try {
       await rename(path, work);
       const job = JSON.parse(await readFile(work, "utf8"));
@@ -53,8 +61,18 @@ export async function tick(dir = defaultDir, copyJob = copy) {
         (job.type === "image" && basename(job.value) !== job.value)
       )
         throw new Error("Invalid job");
-      if (job.type === "image") payload = join(dir, job.value);
-      await copyJob({ ...job, value: payload ?? job.value });
+      if (job.type === "image") {
+        payload = join(dir, job.value);
+        if (job.mimeType !== "image/png") {
+          converted = `${payload}.png`;
+          await convert(payload, converted);
+        }
+      }
+      await copyJob({
+        ...job,
+        value: converted ?? payload ?? job.value,
+        mimeType: converted ? "image/png" : job.mimeType,
+      });
       await writeFile(
         join(dir, `${job.id}.result.json`),
         JSON.stringify({
@@ -73,6 +91,7 @@ export async function tick(dir = defaultDir, copyJob = copy) {
     } finally {
       await unlink(work).catch(() => {});
       if (payload) await unlink(payload).catch(() => {});
+      if (converted) await unlink(converted).catch(() => {});
     }
   }
 }

@@ -58,6 +58,44 @@ test("resolves image payloads inside the shared directory and cleans them", asyn
   );
 });
 
+test("converts JPEG payloads to PNG for clipboard compatibility", async () => {
+  const dir = await mkdtemp(join(tmpdir(), "passthrough-agent-"));
+  const id = "jpeg-job",
+    payload = join(dir, `${id}.payload`),
+    converted = `${payload}.png`;
+  await writeFile(payload, "jpeg");
+  await writeFile(
+    join(dir, `${id}.json`),
+    JSON.stringify({
+      id,
+      type: "image",
+      mimeType: "image/jpeg",
+      value: `${id}.payload`,
+    }),
+  );
+
+  await tick(
+    dir,
+    async (job) => {
+      assert.equal(job.value, converted);
+      assert.equal(job.mimeType, "image/png");
+      assert.equal(await readFile(job.value, "utf8"), "png");
+    },
+    async (source, target) => {
+      assert.equal(source, payload);
+      assert.equal(target, converted);
+      await writeFile(target, "png");
+    },
+  );
+
+  await assert.rejects(readFile(payload));
+  await assert.rejects(readFile(converted));
+  assert.equal(
+    JSON.parse(await readFile(join(dir, `${id}.result.json`), "utf8")).success,
+    true,
+  );
+});
+
 test("rejects image payload paths outside the shared directory", async () => {
   const dir = await mkdtemp(join(tmpdir(), "passthrough-agent-"));
   const id = "unsafe-job";
