@@ -92,4 +92,81 @@ describe("API", () => {
           .attach("files", Buffer.alloc(1001), "x")
       ).status,
     ).toBe(413));
+  it("keeps PWA library files in SQLite and supports list, download, and delete", async () => {
+    const uploaded = await request(ctx.app)
+      .post("/api/library")
+      .set("Authorization", `Bearer ${token}`)
+      .attach("files", Buffer.from("first"), "same.txt")
+      .attach("files", Buffer.from("second"), "same.txt");
+    expect(uploaded.status).toBe(201);
+    expect(uploaded.body.items).toHaveLength(2);
+    expect(readdirSync(join(root, "up"))).toEqual([]);
+
+    const listed = await request(ctx.app)
+      .get("/api/library?page=1")
+      .set("Authorization", `Bearer ${token}`);
+    expect(listed.body).toMatchObject({ page: 1, pageSize: 20, total: 2 });
+    expect(
+      listed.body.items.map((item: { filename: string }) => item.filename),
+    ).toEqual(["same.txt", "same.txt"]);
+    expect(listed.body.items[0]).not.toHaveProperty("content");
+
+    const id = listed.body.items[0].id,
+      downloaded = await request(ctx.app)
+        .get(`/api/library/${id}/download`)
+        .set("Authorization", `Bearer ${token}`);
+    expect(downloaded.text).toBe("second");
+    expect(downloaded.headers["content-disposition"]).toContain("same.txt");
+    expect(downloaded.headers["x-content-type-options"]).toBe("nosniff");
+
+    expect(
+      (
+        await request(ctx.app)
+          .delete(`/api/library/${id}`)
+          .set("Authorization", `Bearer ${token}`)
+      ).status,
+    ).toBe(204);
+    expect(
+      (
+        await request(ctx.app)
+          .get(`/api/library/${id}/download`)
+          .set("Authorization", `Bearer ${token}`)
+      ).status,
+    ).toBe(404);
+  });
+  it("paginates library metadata without loading file bodies", async () => {
+    const insert = ctx.db.prepare(
+      "INSERT INTO library_files(uploaded_at,filename,mime_type,byte_size,content) VALUES(?,?,?,?,?)",
+    );
+    for (let i = 1; i <= 21; i++)
+      insert.run(
+        new Date().toISOString(),
+        `${i}.txt`,
+        "text/plain",
+        1,
+        Buffer.from("x"),
+      );
+
+    const secondPage = await request(ctx.app)
+      .get("/api/library?page=2")
+      .set("Authorization", `Bearer ${token}`);
+    expect(secondPage.body).toMatchObject({ page: 2, pageSize: 20, total: 21 });
+    expect(secondPage.body.items).toHaveLength(1);
+    expect(secondPage.body.items[0].filename).toBe("1.txt");
+  });
+  it("rejects an oversized library batch without storing part of it", async () => {
+    const response = await request(ctx.app)
+      .post("/api/library")
+      .set("Authorization", `Bearer ${token}`)
+      .attach("files", Buffer.alloc(600), "a")
+      .attach("files", Buffer.alloc(600), "b");
+    expect(response.status).toBe(413);
+    expect(
+      (
+        ctx.db.prepare("SELECT count(*) total FROM library_files").get() as {
+          total: number;
+        }
+      ).total,
+    ).toBe(0);
+  });
 });

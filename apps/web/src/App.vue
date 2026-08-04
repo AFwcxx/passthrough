@@ -13,6 +13,12 @@ const page = ref("Dashboard"),
   connecting = ref(false),
   health = ref<any>(),
   history = ref<any>({ items: [] }),
+  library = ref<any>({ items: [], page: 1, pageSize: 20, total: 0 }),
+  selectedFiles = ref<File[]>([]),
+  fileInput = ref<HTMLInputElement>(),
+  uploading = ref(false),
+  libraryMessage = ref(""),
+  libraryError = ref(false),
   settings = ref<any>({ defaultAction: "save", historyPageSize: 20 });
 const headers = (value = token.value) => ({
   Authorization: `Bearer ${value}`,
@@ -21,15 +27,22 @@ const headers = (value = token.value) => ({
 async function load(value = token.value) {
   health.value = await fetch("/api/health").then((r) => r.json());
   if (!value) return true;
-  const [historyResponse, settingsResponse] = await Promise.all([
-    fetch("/api/history", { headers: headers(value) }),
-    fetch("/api/settings", { headers: headers(value) }),
-  ]);
-  if (historyResponse.status === 401 || settingsResponse.status === 401)
+  const [historyResponse, libraryResponse, settingsResponse] =
+    await Promise.all([
+      fetch("/api/history", { headers: headers(value) }),
+      fetch("/api/library", { headers: headers(value) }),
+      fetch("/api/settings", { headers: headers(value) }),
+    ]);
+  if (
+    historyResponse.status === 401 ||
+    libraryResponse.status === 401 ||
+    settingsResponse.status === 401
+  )
     return false;
-  if (!historyResponse.ok || !settingsResponse.ok)
+  if (!historyResponse.ok || !libraryResponse.ok || !settingsResponse.ok)
     throw new Error("Unable to load Passthrough");
   history.value = await historyResponse.json();
+  library.value = await libraryResponse.json();
   settings.value = await settingsResponse.json();
   return true;
 }
@@ -63,6 +76,97 @@ async function save() {
   });
   await load();
 }
+function chooseFiles(event: Event) {
+  selectedFiles.value = Array.from(
+    (event.target as HTMLInputElement).files ?? [],
+  );
+}
+function showLibraryError(message: string) {
+  libraryError.value = true;
+  libraryMessage.value = message;
+}
+async function loadLibrary(nextPage = 1) {
+  const response = await fetch(`/api/library?page=${nextPage}`, {
+    headers: headers(),
+  });
+  if (!response.ok) throw new Error("Unable to load the library.");
+  library.value = await response.json();
+}
+async function changeLibraryPage(nextPage: number) {
+  try {
+    await loadLibrary(nextPage);
+  } catch {
+    showLibraryError("Unable to load the library.");
+  }
+}
+async function uploadFiles() {
+  uploading.value = true;
+  libraryMessage.value = "";
+  libraryError.value = false;
+  const body = new FormData();
+  for (const file of selectedFiles.value) body.append("files", file);
+  try {
+    const response = await fetch("/api/library", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${token.value}` },
+      body,
+    });
+    if (!response.ok) {
+      const result = await response.json();
+      throw new Error(
+        result.error?.message ??
+          result.validationErrors?.[0] ??
+          "Upload failed.",
+      );
+    }
+    const result = await response.json();
+    selectedFiles.value = [];
+    if (fileInput.value) fileInput.value.value = "";
+    libraryMessage.value = `${result.items.length} file${result.items.length === 1 ? "" : "s"} uploaded.`;
+    await loadLibrary(1);
+  } catch (error) {
+    showLibraryError(error instanceof Error ? error.message : "Upload failed.");
+  } finally {
+    uploading.value = false;
+  }
+}
+async function downloadFile(file: any) {
+  try {
+    const response = await fetch(`/api/library/${file.id}/download`, {
+      headers: headers(),
+    });
+    if (!response.ok) throw new Error();
+    const url = URL.createObjectURL(await response.blob()),
+      link = document.createElement("a");
+    link.href = url;
+    link.download = file.filename;
+    document.body.append(link);
+    link.click();
+    link.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 0);
+  } catch {
+    showLibraryError("Download failed.");
+  }
+}
+async function deleteFile(file: any) {
+  if (!window.confirm(`Permanently delete ${file.filename}?`)) return;
+  try {
+    const response = await fetch(`/api/library/${file.id}`, {
+      method: "DELETE",
+      headers: headers(),
+    });
+    if (!response.ok) throw new Error();
+    libraryError.value = false;
+    libraryMessage.value = `${file.filename} deleted.`;
+    await loadLibrary(
+      library.value.items.length === 1 && library.value.page > 1
+        ? library.value.page - 1
+        : library.value.page,
+    );
+  } catch {
+    showLibraryError("Delete failed.");
+  }
+}
 onMounted(async () => {
   if (token.value && !(await load())) rejectToken();
 });
@@ -72,7 +176,7 @@ onMounted(async () => {
     <h1>Passthrough</h1>
     <nav v-if="token">
       <Button
-        v-for="p in ['Dashboard', 'History', 'Settings']"
+        v-for="p in ['Dashboard', 'Library', 'History', 'Settings']"
         :key="p"
         :label="p"
         text
@@ -125,6 +229,55 @@ onMounted(async () => {
         >
       </div></template
     >
+    <Card v-else-if="page === 'Library'"
+      ><template #title>File library</template
+      ><template #content
+        ><form @submit.prevent="uploadFiles">
+          <label
+            >Files<input
+              ref="fileInput"
+              type="file"
+              multiple
+              required
+              @change="chooseFiles"
+          /></label>
+          <Button
+            type="submit"
+            label="Upload"
+            :loading="uploading"
+            :disabled="!selectedFiles.length"
+          />
+        </form>
+        <p
+          v-if="libraryMessage"
+          :class="{ error: libraryError }"
+          :role="libraryError ? 'alert' : 'status'"
+        >
+          {{ libraryMessage }}
+        </p>
+        <DataTable
+          :value="library.items"
+          paginator
+          lazy
+          :rows="library.pageSize"
+          :first="(library.page - 1) * library.pageSize"
+          :total-records="library.total"
+          @page="changeLibraryPage($event.page + 1)"
+          ><Column field="uploaded_at" header="Uploaded" /><Column
+            field="filename"
+            header="File" /><Column field="mime_type" header="Type" /><Column
+            field="byte_size"
+            header="Size" /><Column header="Actions"
+            ><template #body="{ data }"
+              ><div class="actions">
+                <Button label="Download" text @click="downloadFile(data)" />
+                <Button
+                  label="Delete"
+                  severity="danger"
+                  text
+                  @click="deleteFile(data)"
+                /></div></template></Column></DataTable></template
+    ></Card>
     <DataTable
       v-else-if="page === 'History'"
       :value="history.items"

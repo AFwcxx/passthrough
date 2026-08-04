@@ -43,6 +43,10 @@ input {
 .error {
   color: #b91c1c;
 }
+.actions {
+  display: flex;
+  gap: 0.25rem;
+}
 @media (max-width: 600px) {
   header {
     display: block;

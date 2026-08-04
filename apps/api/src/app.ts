@@ -4,13 +4,16 @@ import { createHash, timingSafeEqual, randomUUID } from "node:crypto";
 import {
   copyFileSync,
   mkdirSync,
+  mkdtempSync,
   readdirSync,
   readFileSync,
   renameSync,
+  rmSync,
   statSync,
   writeFileSync,
   unlinkSync,
 } from "node:fs";
+import { tmpdir } from "node:os";
 import { basename, extname, join, relative } from "node:path";
 import {
   actionSchema,
@@ -235,6 +238,144 @@ export function createApp(c: Config) {
     ).total;
     res.json({ items, page, pageSize: limit, total });
   });
+  type LibraryRequest = express.Request & { libraryTempDir?: string };
+  const libraryUpload = multer({
+    storage: multer.diskStorage({
+      destination: (req: LibraryRequest, _file, done) => {
+        req.libraryTempDir ??= mkdtempSync(
+          join(tmpdir(), "passthrough-library-"),
+        );
+        done(null, req.libraryTempDir);
+      },
+    }),
+    limits: { fileSize: c.MAX_UPLOAD_BYTES, files: 20, fields: 0 },
+  });
+  app.post(
+    "/api/library",
+    requestLimit,
+    (req: LibraryRequest, res, next) => {
+      const cleanup = () => {
+        if (req.libraryTempDir) {
+          rmSync(req.libraryTempDir, { recursive: true, force: true });
+          req.libraryTempDir = undefined;
+        }
+      };
+      res.once("finish", cleanup);
+      res.once("close", cleanup);
+      libraryUpload.array("files", 20)(req, res, next);
+    },
+    (req, res, next) => {
+      const files = (req.files as Express.Multer.File[]) ?? [];
+      if (!files.length)
+        return res.status(400).json({
+          success: false,
+          validationErrors: ["At least one file is required"],
+        });
+      if (
+        files.reduce((total, file) => total + file.size, 0) > c.MAX_UPLOAD_BYTES
+      )
+        return res.status(413).json({
+          success: false,
+          error: {
+            code: "request_too_large",
+            message: "Upload exceeds configured maximum",
+          },
+        });
+      try {
+        const insert = db.prepare(
+            "INSERT INTO library_files(uploaded_at,filename,mime_type,byte_size,content) VALUES(?,?,?,?,?)",
+          ),
+          uploadedAt = new Date().toISOString(),
+          items: Array<{
+            id: number;
+            uploaded_at: string;
+            filename: string;
+            mime_type: string;
+            byte_size: number;
+          }> = [];
+        db.exec("BEGIN");
+        try {
+          for (const file of files) {
+            const filename = basename(file.originalname).slice(-255) || "file",
+              mimeType = file.mimetype || "application/octet-stream",
+              result = insert.run(
+                uploadedAt,
+                filename,
+                mimeType,
+                file.size,
+                readFileSync(file.path),
+              );
+            items.push({
+              id: Number(result.lastInsertRowid),
+              uploaded_at: uploadedAt,
+              filename,
+              mime_type: mimeType,
+              byte_size: file.size,
+            });
+          }
+          db.exec("COMMIT");
+        } catch (error) {
+          db.exec("ROLLBACK");
+          throw error;
+        }
+        res.status(201).json({ success: true, items });
+      } catch (error) {
+        next(error);
+      }
+    },
+  );
+  app.get("/api/library", (req, res) => {
+    const page = Math.max(1, Math.floor(Number(req.query.page) || 1)),
+      pageSize = 20,
+      items = db
+        .prepare(
+          "SELECT id,uploaded_at,filename,mime_type,byte_size FROM library_files ORDER BY id DESC LIMIT ? OFFSET ?",
+        )
+        .all(pageSize, (page - 1) * pageSize),
+      total = (
+        db.prepare("SELECT count(*) total FROM library_files").get() as {
+          total: number;
+        }
+      ).total;
+    res.json({ items, page, pageSize, total });
+  });
+  app.get("/api/library/:id/download", (req, res) => {
+    const file = db
+      .prepare(
+        "SELECT filename,mime_type,byte_size,content FROM library_files WHERE id=?",
+      )
+      .get(req.params.id) as
+      | {
+          filename: string;
+          mime_type: string;
+          byte_size: number;
+          content: Uint8Array;
+        }
+      | undefined;
+    if (!file)
+      return res.status(404).json({
+        success: false,
+        error: { code: "not_found", message: "File not found" },
+      });
+    res.attachment(file.filename);
+    res.type(file.mime_type);
+    res.set({
+      "Content-Length": String(file.byte_size),
+      "X-Content-Type-Options": "nosniff",
+    });
+    res.send(Buffer.from(file.content));
+  });
+  app.delete("/api/library/:id", (req, res) => {
+    const result = db
+      .prepare("DELETE FROM library_files WHERE id=?")
+      .run(req.params.id);
+    if (!result.changes)
+      return res.status(404).json({
+        success: false,
+        error: { code: "not_found", message: "File not found" },
+      });
+    res.sendStatus(204);
+  });
   app.get("/api/settings", (_req, res) => res.json(getSettings(db)));
   app.put("/api/settings", (req, res) => {
     const p = settingsSchema.safeParse(req.body);
@@ -266,7 +407,8 @@ export function createApp(c: Config) {
         }),
       );
       const large =
-        err instanceof multer.MulterError && err.code === "LIMIT_FILE_SIZE";
+        err instanceof multer.MulterError &&
+        ["LIMIT_FILE_SIZE", "LIMIT_FILE_COUNT"].includes(err.code);
       res.status(large ? 413 : 500).json({
         success: false,
         error: {
