@@ -10,7 +10,7 @@ services:
       AUTH_TOKEN: ${AUTH_TOKEN:-replace-with-a-long-random-token}
       MAX_UPLOAD_BYTES: ${MAX_UPLOAD_BYTES:-52428800}
     volumes:
-      - ${UPLOAD_HOST_DIR:-/tmp/passthrough}:/data/uploads
+      - ${UPLOAD_HOST_DIR:-${XDG_DATA_HOME:-${HOME}/.local/share}/passthrough/uploads}:/data/uploads
       - ./data/database:/data/database
       - ${XDG_DATA_HOME:-${HOME}/.local/share}/passthrough/clipboard:/data/clipboard
     healthcheck:

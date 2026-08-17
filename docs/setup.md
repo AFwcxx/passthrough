@@ -20,8 +20,9 @@ openssl rand -hex 32
 Edit `.env` and replace `replace-with-a-long-random-token` with that token.
 Keep it available for the Apple Shortcut and the web dashboard.
 
-The defaults save received files in `/tmp/passthrough`. To use a permanent
-location, change `UPLOAD_HOST_DIR` in `.env` before continuing.
+By default, received files are saved persistently in
+`${XDG_DATA_HOME:-$HOME/.local/share}/passthrough/uploads`. Change
+`UPLOAD_HOST_DIR` in `.env` to use another location.
 
 Prepare the host directories:
 

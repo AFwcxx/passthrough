@@ -20,7 +20,7 @@ Build with `pnpm build`. Run `pnpm lint`, `pnpm typecheck`, and `pnpm test`.
 
 ## Docker Compose
 
-Replace `AUTH_TOKEN` in `.env` with a long random secret. Create the bind directories as your desktop user with `mkdir -p "${UPLOAD_HOST_DIR:-/tmp/passthrough}" data/database "${XDG_DATA_HOME:-$HOME/.local/share}/passthrough/clipboard"`, then run `docker compose up --build -d`. The service listens on HTTP port 8787. Configure `UPLOAD_HOST_DIR`, `MAX_UPLOAD_BYTES`, and other paths from `.env.example`; the destination is intentionally not editable in the PWA.
+Replace `AUTH_TOKEN` in `.env` with a long random secret. Run `scripts/prepare-docker-dirs.sh`, then `docker compose up --build -d`. The service listens on HTTP port 8787. Uploads default to `${XDG_DATA_HOME:-$HOME/.local/share}/passthrough/uploads`; configure `UPLOAD_HOST_DIR`, `MAX_UPLOAD_BYTES`, and other paths from `.env.example` as needed. The destination is intentionally not editable in the PWA.
 
 On each trusted browser, open the PWA and enter the token when prompted. The PWA verifies it and stores it in that browser for future visits. Its Library tab uploads files into the persistent SQLite database and supports paginated browsing, individual downloads, and confirmed deletion; this is separate from Shortcut files saved in `UPLOAD_HOST_DIR`.
 

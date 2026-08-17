@@ -10,7 +10,7 @@ root="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
 if [[ -f "$root/.env" ]]; then
   source "$root/.env"
 fi
-upload="${UPLOAD_HOST_DIR:-/tmp/passthrough}"
+upload="${UPLOAD_HOST_DIR:-${XDG_DATA_HOME:-$HOME/.local/share}/passthrough/uploads}"
 [[ $upload == /* ]] || upload="$root/$upload"
 database="$root/data/database"
 clipboard="${XDG_DATA_HOME:-$HOME/.local/share}/passthrough/clipboard"
