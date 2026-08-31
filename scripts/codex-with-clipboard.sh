@@ -20,10 +20,14 @@ if [[ -z "$xauthority" ]]; then
     fi
   done
 fi
-if [[ ! -f "$xauthority" ]]; then
-  echo "GNOME XWayland authority not found in $XDG_RUNTIME_DIR." >&2
-  exit 1
+if [[ -n "$xauthority" ]]; then
+  if [[ ! -f "$xauthority" ]]; then
+    echo "XWayland authority not found: $xauthority" >&2
+    exit 1
+  fi
+  export XAUTHORITY="$xauthority"
+else
+  unset XAUTHORITY
 fi
-export XAUTHORITY="$xauthority"
 
 exec codex "$@"

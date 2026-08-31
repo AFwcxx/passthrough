@@ -51,15 +51,16 @@ complete.
 
 Skip this section if the Shortcut will only use the `save` action.
 
-Clipboard support requires Fedora GNOME Wayland, Node 22 at `/usr/bin/node`,
-`wl-copy`, and ImageMagick. Check Node and install the packages if needed:
+Clipboard support requires a Fedora Wayland session tested with GNOME and
+Hyprland, Node 22 at `/usr/bin/node`, `wl-copy`, and ImageMagick. Check Node
+and install the packages if needed:
 
 ```sh
 /usr/bin/node --version
 sudo dnf install wl-clipboard ImageMagick
 ```
 
-Run the installer from your active GNOME Wayland desktop session:
+Run the installer from your active Fedora Wayland desktop session:
 
 ```sh
 scripts/install-clipboard-agent.sh
@@ -93,8 +94,10 @@ scripts/codex-with-clipboard.sh
 
 Pass Codex options normally, for example
 `scripts/codex-with-clipboard.sh --no-alt-screen`. The wrapper configures the
-active Fedora Wayland socket and GNOME's XWayland fallback, then fails clearly
-if either is unavailable.
+active Fedora Wayland socket. Codex uses native Wayland data-control on
+Hyprland; on GNOME, the wrapper supplies Mutter's XWayland authority because
+GNOME does not expose data-control. It fails clearly when the Wayland socket
+is unavailable or an explicit XWayland authority override is invalid.
 
 If multiple accounts use `CODEX_HOME`, alias the base command to the wrapper
 before defining the account aliases:

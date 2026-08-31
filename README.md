@@ -7,7 +7,8 @@ For complete Fedora and iPhone/iPad instructions, start with the
 
 ## Prerequisites and development
 
-Node 22, pnpm, and (for clipboard use) Fedora GNOME Wayland with `wl-copy` and ImageMagick.
+Node 22, pnpm, and (for clipboard use) a Fedora Wayland session tested with
+GNOME and Hyprland, plus `wl-copy` and ImageMagick.
 
 ```sh
 cp .env.example .env

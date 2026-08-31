@@ -22,7 +22,7 @@
                                                                  |
                                                                  v
                                                   +-------------------------+
-                                                  | GNOME Wayland clipboard |
+                                                  |    Wayland clipboard    |
                                                   +-------------------------+
 ```
 
@@ -30,5 +30,5 @@ Express validates authentication/input, persists transfer metadata, library file
 
 An SSH or tmux process can read that same clipboard when it uses the active
 Fedora Wayland socket. `scripts/codex-with-clipboard.sh` supplies that
-environment plus GNOME's local XWayland fallback, which Codex uses when
-Wayland data-control is unavailable.
+environment, uses native data-control when available, and adds GNOME's local
+XWayland fallback when Mutter authority is present.
