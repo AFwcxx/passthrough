@@ -199,6 +199,8 @@ journalctl --user -u passthrough-clipboard.service
 - Clipboard jobs that remain queued usually mean the agent is not running
   inside the active Wayland session, or the Compose and agent clipboard
   directories do not match.
+- If the agent crashed after claiming a job, recover it with
+  `scripts/requeue-clipboard-jobs.sh`.
 - `Wayland socket not found` from the Codex wrapper means the Fedora desktop
   session is not active or uses a different socket. Check
   `ls "$XDG_RUNTIME_DIR"/wayland-*` and set `WAYLAND_DISPLAY` to the socket
