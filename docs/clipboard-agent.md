@@ -19,8 +19,10 @@ For Codex running through SSH or tmux, launch it from the repository with:
 scripts/codex-with-clipboard.sh
 ```
 
-The wrapper checks the Wayland socket and passes every argument to Codex. Codex
-uses native Wayland data-control when the compositor provides it, as Hyprland
-does. On GNOME, the wrapper supplies Mutter's XWayland authority because GNOME
-does not expose data-control. `PASSTHROUGH_DISPLAY` and
-`PASSTHROUGH_XAUTHORITY` override the XWayland values when necessary.
+The wrapper discovers the sole Wayland socket and passes every argument to
+Codex. With no socket it starts Codex without desktop clipboard access; with
+multiple sockets, set `WAYLAND_DISPLAY` explicitly. Codex uses native Wayland
+data-control when the compositor provides it, as Hyprland does. On GNOME, the
+wrapper supplies Mutter's XWayland authority because GNOME does not expose
+data-control. `PASSTHROUGH_DISPLAY` and `PASSTHROUGH_XAUTHORITY` override the
+XWayland values when necessary.

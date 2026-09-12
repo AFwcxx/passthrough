@@ -2,7 +2,23 @@
 set -euo pipefail
 
 export XDG_RUNTIME_DIR="${XDG_RUNTIME_DIR:-/run/user/$(id -u)}"
-export WAYLAND_DISPLAY="${WAYLAND_DISPLAY:-wayland-0}"
+
+if [[ -z "${WAYLAND_DISPLAY:-}" ]]; then
+  wayland_sockets=()
+  for candidate in "$XDG_RUNTIME_DIR"/wayland-*; do
+    [[ -S "$candidate" ]] && wayland_sockets+=("$candidate")
+  done
+
+  case ${#wayland_sockets[@]} in
+    0) exec codex "$@" ;;
+    1) export WAYLAND_DISPLAY="${wayland_sockets[0]##*/}" ;;
+    *)
+      echo "Multiple Wayland sockets found; set WAYLAND_DISPLAY explicitly." >&2
+      printf '  %s\n' "${wayland_sockets[@]##*/}" >&2
+      exit 1
+      ;;
+  esac
+fi
 
 socket="$XDG_RUNTIME_DIR/$WAYLAND_DISPLAY"
 if [[ ! -S "$socket" ]]; then

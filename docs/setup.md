@@ -93,11 +93,12 @@ scripts/codex-with-clipboard.sh
 ```
 
 Pass Codex options normally, for example
-`scripts/codex-with-clipboard.sh --no-alt-screen`. The wrapper configures the
+`scripts/codex-with-clipboard.sh --no-alt-screen`. The wrapper discovers the
 active Fedora Wayland socket. Codex uses native Wayland data-control on
 Hyprland; on GNOME, the wrapper supplies Mutter's XWayland authority because
-GNOME does not expose data-control. It fails clearly when the Wayland socket
-is unavailable or an explicit XWayland authority override is invalid.
+GNOME does not expose data-control. With no Wayland socket it starts Codex
+without desktop clipboard access. Multiple sockets or an invalid explicit
+`WAYLAND_DISPLAY` fail clearly so the wrong session is not selected.
 
 If multiple accounts use `CODEX_HOME`, alias the base command to the wrapper
 before defining the account aliases:
