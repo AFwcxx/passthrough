@@ -12,11 +12,10 @@ test("completes when wl-copy daemonizes without closing inherited stderr", async
     call = { command, args, options, input: undefined };
     const child = new EventEmitter();
     child.stderr = new EventEmitter();
-    child.stdin = {
-      end(input) {
-        call.input = input;
-        Promise.resolve().then(() => child.emit("exit", 0));
-      },
+    child.stdin = new EventEmitter();
+    child.stdin.end = (input) => {
+      call.input = input;
+      Promise.resolve().then(() => child.emit("exit", 0));
     };
     return child;
   };
@@ -30,6 +29,43 @@ test("completes when wl-copy daemonizes without closing inherited stderr", async
     options: { stdio: ["pipe", "ignore", "pipe"] },
     input: "$(touch /tmp/nope)",
   });
+});
+
+test("records a wl-copy broken pipe as a failed job without crashing the agent", async () => {
+  const dir = await mkdtemp(join(tmpdir(), "passthrough-agent-"));
+  const id = "broken-pipe",
+    payload = `${id}.payload`;
+  await writeFile(join(dir, payload), "image");
+  await writeFile(
+    join(dir, `${id}.json`),
+    JSON.stringify({
+      id,
+      type: "image",
+      mimeType: "image/png",
+      value: payload,
+    }),
+  );
+  const spawn = () => {
+    const child = new EventEmitter();
+    child.stderr = new EventEmitter();
+    child.stdin = new EventEmitter();
+    child.stdin.end = () => {
+      Promise.resolve().then(() => {
+        child.stdin.emit("error", new Error("write EPIPE"));
+        child.emit("exit", 1);
+      });
+    };
+    return child;
+  };
+
+  await tick(dir, (job) => copy(job, spawn));
+  const result = JSON.parse(
+    await readFile(join(dir, `${id}.result.json`), "utf8"),
+  );
+  assert.equal(result.success, false);
+  assert.match(result.error, /EPIPE/);
+  await assert.rejects(readFile(join(dir, payload)));
+  await assert.rejects(readFile(join(dir, `${id}.json.working`)));
 });
 
 test("resolves image payloads inside the shared directory and cleans them", async () => {

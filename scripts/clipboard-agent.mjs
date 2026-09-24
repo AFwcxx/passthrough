@@ -14,15 +14,9 @@ const defaultDir =
     "passthrough/clipboard",
   );
 
-export function copy(job, spawnProcess = spawn, loadFile = readFile) {
-  return new Promise(async (resolve, reject) => {
-    let input;
-    try {
-      input = job.type === "image" ? await loadFile(job.value) : job.value;
-    } catch (error) {
-      reject(error);
-      return;
-    }
+export async function copy(job, spawnProcess = spawn, loadFile = readFile) {
+  const input = job.type === "image" ? await loadFile(job.value) : job.value;
+  return new Promise((resolve, reject) => {
     const child = spawnProcess("wl-copy", ["--type", job.mimeType], {
       stdio: ["pipe", "ignore", "pipe"],
     });
@@ -30,6 +24,7 @@ export function copy(job, spawnProcess = spawn, loadFile = readFile) {
     child.stderr.on("data", (data) => {
       error += data;
     });
+    child.stdin.on("error", reject);
     child.on("error", reject);
     child.on("exit", (code) =>
       code ? reject(new Error(error || `wl-copy exited ${code}`)) : resolve(),
