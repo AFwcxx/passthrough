@@ -1,7 +1,7 @@
 services:
   passthrough:
     build: .
-    ports: ["${PORT:-8787}:8787"]
+    ports: ["127.0.0.1:${PORT:-8787}:8787"]
     environment:
       PORT: 8787
       UPLOAD_CONTAINER_DIR: /data/uploads

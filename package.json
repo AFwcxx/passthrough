@@ -9,7 +9,7 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "typecheck": "pnpm -r typecheck",
-    "test": "bash scripts/codex-with-clipboard.test.sh && node --test scripts/clipboard-agent.test.mjs && pnpm -r test",
+    "test": "bash scripts/codex-with-clipboard.test.sh && bash scripts/pi-with-clipboard.test.sh && node --test scripts/clipboard-agent.test.mjs && pnpm -r test",
     "build": "pnpm -r build",
     "prepare": "husky"
   },
